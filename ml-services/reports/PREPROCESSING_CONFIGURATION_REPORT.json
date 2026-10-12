@@ -1,0 +1,236 @@
+{
+  "A_FINAL_X_FEATURE_LIST": {
+    "numerical": [
+      "age",
+      "symptoms_severity",
+      "arrival_delay_minutes",
+      "token_number",
+      "patients_ahead",
+      "queue_length_at_arrival",
+      "active_doctors",
+      "average_service_time_minutes",
+      "consultation_complexity",
+      "staff_availability",
+      "break_indicator",
+      "peak_hour",
+      "hospital_load"
+    ],
+    "categorical": [
+      "gender",
+      "patient_type",
+      "priority_level",
+      "appointment_status",
+      "day_of_week",
+      "doctor_specialization"
+    ],
+    "total_input_features": 19
+  },
+  "B_TARGET_VARIABLE": {
+    "name": "waiting_time_minutes",
+    "type": "numeric (integer)",
+    "description": "Patient actual waiting time before consultation in minutes"
+  },
+  "C_FEATURES_EXCLUDED": {
+    "waiting_time_minutes": "TARGET VARIABLE - must not be in X",
+    "patient_id": "Unique identifier with no predictive value; causes overfitting",
+    "previous_patient_service_time": "LEAKAGE - outcome from previous patient after current patient joins queue",
+    "visit_date": "Temporal feature; use day_of_week as proxy; requires date parsing",
+    "arrival_time": "Temporal feature; requires HH:MM parsing; use peak_hour instead",
+    "scheduled_time": "Temporal feature; requires HH:MM parsing; arrival_delay_minutes captures the diff"
+  },
+  "D_PREPROCESSING_STRATEGY": {
+    "numerical_features": {
+      "imputation": "SimpleImputer with median strategy",
+      "scaling": "NOT applied (suitable for tree-based models; add StandardScaler if using linear models)",
+      "features": [
+        "age",
+        "symptoms_severity",
+        "arrival_delay_minutes",
+        "token_number",
+        "patients_ahead",
+        "queue_length_at_arrival",
+        "active_doctors",
+        "average_service_time_minutes",
+        "consultation_complexity",
+        "staff_availability",
+        "break_indicator",
+        "peak_hour",
+        "hospital_load"
+      ]
+    },
+    "categorical_features": {
+      "imputation": "SimpleImputer with most_frequent strategy",
+      "encoding": "OneHotEncoder with sparse_output=False and handle_unknown=\"ignore\"",
+      "features": [
+        "gender",
+        "patient_type",
+        "priority_level",
+        "appointment_status",
+        "day_of_week",
+        "doctor_specialization"
+      ]
+    },
+    "pipeline": "sklearn ColumnTransformer combining numerical and categorical transformers"
+  },
+  "E_TRAIN_TEST_SPLIT": {
+    "test_size": 0.2,
+    "train_records": 16000,
+    "test_records": 4000,
+    "train_percent": 80.0,
+    "test_percent": 20.0,
+    "random_state": 42,
+    "strategy": "Random stratification (preserves distribution)"
+  },
+  "F_FINAL_DIMENSIONS": {
+    "train_X_shape": [
+      16000,
+      37
+    ],
+    "test_X_shape": [
+      4000,
+      37
+    ],
+    "train_y_shape": [
+      16000
+    ],
+    "test_y_shape": [
+      4000
+    ],
+    "input_features_before_encoding": 19,
+    "output_features_after_encoding": 37
+  },
+  "G_LEAKAGE_PREVENTION": {
+    "average_service_time_minutes": {
+      "status": "INCLUDED WITH CAUTION",
+      "assumption": "This value represents historical average per doctor, computed from data BEFORE this patient arrived",
+      "risk": "HIGH if calculated using entire dataset including future patients; SAFE if from historical records only",
+      "usage": "Assume this is pre-calculated from historical queue records; not recalculated on test set",
+      "note": "In production, this should be updated daily/weekly from past data, not recomputed on current queue"
+    },
+    "previous_patient_service_time": {
+      "status": "EXCLUDED",
+      "reason": "This is outcome from PREVIOUS patient; becomes known AFTER current patient joins queue but BEFORE prediction",
+      "impact": "Would create look-ahead bias if included; not available at prediction time",
+      "action": "Removed entirely from feature set"
+    },
+    "prediction_point": {
+      "timing": "Immediately after patient joins queue and is assigned a token",
+      "available_info": "Patient demographics, queue state at arrival, doctor info, time-of-day, hospital operational status",
+      "unavailable_info": "Actual service time (outcome), previous patient details, future queue changes"
+    }
+  },
+  "H_MISSING_VALUE_SUMMARY": {
+    "feature": [
+      "age",
+      "symptoms_severity",
+      "arrival_delay_minutes",
+      "token_number",
+      "patients_ahead",
+      "queue_length_at_arrival",
+      "active_doctors",
+      "average_service_time_minutes",
+      "consultation_complexity",
+      "staff_availability",
+      "break_indicator",
+      "peak_hour",
+      "hospital_load",
+      "gender",
+      "patient_type",
+      "priority_level",
+      "appointment_status",
+      "day_of_week",
+      "doctor_specialization"
+    ],
+    "type": [
+      "numerical",
+      "numerical",
+      "numerical",
+      "numerical",
+      "numerical",
+      "numerical",
+      "numerical",
+      "numerical",
+      "numerical",
+      "numerical",
+      "numerical",
+      "numerical",
+      "numerical",
+      "categorical",
+      "categorical",
+      "categorical",
+      "categorical",
+      "categorical",
+      "categorical"
+    ],
+    "missing_count": [
+      0,
+      0,
+      5773,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      142,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "missing_percent": [
+      0.0,
+      0.0,
+      28.86,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.71,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "handling": [
+      "No imputation needed",
+      "No imputation needed",
+      "Impute with median",
+      "No imputation needed",
+      "No imputation needed",
+      "No imputation needed",
+      "No imputation needed",
+      "No imputation needed",
+      "No imputation needed",
+      "Impute with median",
+      "No imputation needed",
+      "No imputation needed",
+      "No imputation needed",
+      "No imputation needed",
+      "No imputation needed",
+      "No imputation needed",
+      "No imputation needed",
+      "No imputation needed",
+      "No imputation needed"
+    ]
+  },
+  "I_DATA_QUALITY_CHECKS": {
+    "no_target_leakage": "waiting_time_minutes NOT in X \u2713",
+    "no_patient_id": "patient_id NOT in X \u2713",
+    "no_previous_service_time": "previous_patient_service_time NOT in X \u2713",
+    "train_test_shapes_match": "X_train columns=37, X_test columns=37 \u2713",
+    "no_nan_in_transformed_data": "Train NaN count=0, Test NaN count=0 \u2713"
+  }
+}

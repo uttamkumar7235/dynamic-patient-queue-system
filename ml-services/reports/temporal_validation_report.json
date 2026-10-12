@@ -1,0 +1,118 @@
+{
+  "timestamp": "2026-10-12T08:52:40.113517",
+  "split_type": "temporal_chronological",
+  "date_range": {
+    "min_date": "2025-01-01 00:00:00",
+    "max_date": "2025-12-31 00:00:00"
+  },
+  "split_dates": {
+    "train_end": "2025-10-17 00:00:00",
+    "test_start": "2025-10-17 00:00:00"
+  },
+  "dataset": {
+    "total_records": 20000,
+    "train_records": 16000,
+    "test_records": 4000,
+    "train_test_split_pct": "80/20"
+  },
+  "input_features": {
+    "numerical_count": 13,
+    "categorical_count": 6,
+    "total_count": 19
+  },
+  "target_variable": "waiting_time_minutes",
+  "target_statistics": {
+    "train": {
+      "mean": 75.4954375,
+      "std": 45.52655703977446,
+      "median": 68.0,
+      "min": 1.0,
+      "max": 240.0
+    },
+    "test": {
+      "mean": 69.464,
+      "std": 43.022208585890866,
+      "median": 62.0,
+      "min": 1.0,
+      "max": 240.0
+    }
+  },
+  "model_evaluations": {
+    "Linear Regression": {
+      "metrics": {
+        "mae": 13.1756146316393,
+        "rmse": 17.905055236103784,
+        "r2": 0.8267494929389652,
+        "median_absolute_error": 10.02879446467071,
+        "p95_absolute_error": 36.26864077739795,
+        "p75_absolute_error": 18.089787768924523,
+        "p50_absolute_error": 10.02879446467071,
+        "p25_absolute_error": 4.5697216318095
+      },
+      "error_distribution": {
+        "mean_error": -0.2498250469253639,
+        "std_error": 17.903312276052617,
+        "min_error": -93.26710707934768,
+        "max_error": 105.8173791553573,
+        "pct_over_prediction": 51.74999999999999
+      }
+    },
+    "Random Forest": {
+      "metrics": {
+        "mae": 8.565739510918753,
+        "rmse": 10.853373983525909,
+        "r2": 0.9363420395120352,
+        "median_absolute_error": 7.104163068610777,
+        "p95_absolute_error": 21.61316909595034,
+        "p75_absolute_error": 12.078889834802876,
+        "p50_absolute_error": 7.104163068610777,
+        "p25_absolute_error": 3.461814655172413
+      },
+      "error_distribution": {
+        "mean_error": -0.474740064154291,
+        "std_error": 10.842986152244402,
+        "min_error": -50.23566666666666,
+        "max_error": 40.873333333333335,
+        "pct_over_prediction": 49.75
+      }
+    },
+    "XGBoost": {
+      "metrics": {
+        "mae": 8.063934326171875,
+        "rmse": 10.153098970322898,
+        "r2": 0.9442916512489319,
+        "median_absolute_error": 6.7694196701049805,
+        "p95_absolute_error": 20.565169525146462,
+        "p75_absolute_error": 11.310542106628418,
+        "p50_absolute_error": 6.7694196701049805,
+        "p25_absolute_error": 3.277965545654297
+      },
+      "error_distribution": {
+        "mean_error": -0.1560365091105923,
+        "std_error": 10.151900172611136,
+        "min_error": -32.93138885498047,
+        "max_error": 36.0614013671875,
+        "pct_over_prediction": 49.475
+      }
+    },
+    "LightGBM": {
+      "metrics": {
+        "mae": 8.00789276106994,
+        "rmse": 10.074715836261682,
+        "r2": 0.9451484638220168,
+        "median_absolute_error": 6.786529333154412,
+        "p95_absolute_error": 19.94832119883039,
+        "p75_absolute_error": 11.198211953741215,
+        "p50_absolute_error": 6.786529333154412,
+        "p25_absolute_error": 3.3047655640775457
+      },
+      "error_distribution": {
+        "mean_error": -0.15585247466168844,
+        "std_error": 10.07351027137828,
+        "min_error": -35.14960461314652,
+        "max_error": 36.97787513075809,
+        "pct_over_prediction": 49.35
+      }
+    }
+  }
+}

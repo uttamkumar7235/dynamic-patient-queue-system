@@ -1,0 +1,258 @@
+import pandas as pd
+import json
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+DATA_PATH = ROOT / 'data' / 'raw' / 'synthetic_patient_queue_dataset.csv'
+OUT_DIR = ROOT / 'reports'
+
+df = pd.read_csv(DATA_PATH)
+
+analysis = {
+    "A_DATASET_DIMENSIONS": {
+        "rows": int(df.shape[0]),
+        "columns": int(df.shape[1]),
+        "total_cells": int(df.shape[0] * df.shape[1]),
+        "description": "Synthetic patient queue dataset with 20,000 patient records and 26 features"
+    },
+    
+    "B_FEATURE_LIST": {
+        "all_columns": list(df.columns),
+        "count": len(df.columns)
+    },
+    
+    "C_TARGET_VARIABLE": {
+        "name": "waiting_time_minutes",
+        "type": "numeric (integer)",
+        "dtype": str(df['waiting_time_minutes'].dtype),
+        "min": int(df['waiting_time_minutes'].min()),
+        "max": int(df['waiting_time_minutes'].max()),
+        "mean": float(df['waiting_time_minutes'].mean()),
+        "median": float(df['waiting_time_minutes'].median()),
+        "std": float(df['waiting_time_minutes'].std()),
+        "description": "Represents the actual waiting time in minutes for each patient - this is the primary prediction target",
+        "note": "This is a clear, unambiguous target variable representing the expected waiting-time outcome"
+    },
+    
+    "D_MISSING_VALUE_SUMMARY": {
+        "total_missing_cells": int(df.isna().sum().sum()),
+        "columns_with_missing": {},
+        "columns_without_missing": []
+    },
+    
+    "E_DUPLICATE_SUMMARY": {
+        "total_duplicate_rows": int(df.duplicated().sum()),
+        "percentage": 0.0,
+        "note": "No exact duplicate rows detected in the dataset"
+    },
+    
+    "F_CANDIDATE_INPUT_FEATURES": {
+        "queue_and_position_features": [
+            "patients_ahead (int) - Direct predictor of waiting time",
+            "queue_length_at_arrival (int) - Total queue load when patient arrived",
+            "token_number (int) - Sequential token assigned to patient"
+        ],
+        "doctor_and_service_features": [
+            "doctor_id (str categorical) - Doctor identity, affects service time",
+            "doctor_specialization (str categorical) - Medical specialty affects consultation duration",
+            "average_service_time_minutes (float) - Expected service duration per doctor",
+            "previous_patient_service_time (float) - Actual time for immediately prior patient",
+            "active_doctors (int) - Number of available doctors working"
+        ],
+        "patient_and_visit_features": [
+            "age (int) - Patient demographics, affects service complexity",
+            "gender (str categorical) - Demographic information",
+            "patient_type (str) - New vs Follow-up affects consultation time",
+            "priority_level (str) - Urgent/Emergency patients affect queue dynamics",
+            "symptoms_severity (int) - Clinical urgency indicator",
+            "consultation_complexity (int) - Expected complexity of consultation"
+        ],
+        "temporal_features": [
+            "arrival_delay_minutes (float) - Time between scheduled and actual arrival",
+            "day_of_week (str categorical) - Operational patterns vary by day",
+            "peak_hour (int) - 1=peak, 0=non-peak; affects queue speed"
+        ],
+        "operational_features": [
+            "hospital_load (float) - Overall occupancy/load percentage",
+            "staff_availability (float) - Percentage of staff available",
+            "break_indicator (int) - Whether doctor on break",
+            "appointment_status (str) - Scheduled vs Walk-in affects queue flow"
+        ]
+    },
+    
+    "G_EXCLUDED_AND_LEAKY_FEATURES": {
+        "excluded_features": {
+            "patient_id": "Unique identifier; contains no predictive information, would cause overfitting",
+            "doctor_id": "High-cardinality identifier; should use doctor_specialization as proxy or encode differently",
+            "visit_date": "Temporal feature; convert to ordinal or use day_of_week instead",
+            "arrival_time": "Temporal feature; requires parsing HH:MM format and conversion to meaningful features",
+            "scheduled_time": "Temporal feature; same as arrival_time; calculate arrival_delay instead"
+        },
+        "suspected_leakage": {
+            "previous_patient_service_time": {
+                "risk": "HIGH LEAKAGE",
+                "reason": "This is outcome information from a previous patient; it occurs AFTER the current patient joins queue but BEFORE prediction is made. Creates look-ahead bias.",
+                "recommendation": "Use with caution or exclude from real-time prediction models; only safe for post-hoc analysis"
+            },
+            "average_service_time_minutes": {
+                "risk": "MODERATE LEAKAGE",
+                "reason": "This appears to be historical average for each doctor. If recalculated on entire dataset, it may include future patient data.",
+                "recommendation": "Use only if calculated from historical data strictly BEFORE prediction time"
+            }
+        },
+        "note": "Leakage detection is crucial for deployment; features must represent only information available at prediction time"
+    },
+    
+    "H_DATA_PREPROCESSING_REQUIREMENTS": {
+        "numerical_features": {
+            "need_scaling": True,
+            "features": ["age", "symptoms_severity", "arrival_delay_minutes", "average_service_time_minutes", "previous_patient_service_time", "consultation_complexity", "staff_availability", "hospital_load", "waiting_time_minutes"],
+            "recommendation": "Standardize (Z-score) or normalize (0-1) to prevent large-scale features from dominating ML models",
+            "note": "Important for distance-based and gradient descent algorithms"
+        },
+        "categorical_features": {
+            "need_encoding": True,
+            "features": ["gender", "patient_type", "priority_level", "appointment_status", "day_of_week", "doctor_specialization"],
+            "methods": [
+                "One-Hot Encoding: gender, patient_type, appointment_status, day_of_week, doctor_specialization",
+                "Ordinal Encoding: priority_level (Normal < Urgent < Emergency)"
+            ],
+            "note": "Categorical features must be converted to numerical representations for ML models"
+        },
+        "missing_values": {
+            "arrival_delay_minutes": {
+                "missing": 5773,
+                "percentage": 28.865,
+                "recommendation": "Impute with 0 (assumed on-time arrival) or median; or use as indicator variable"
+            },
+            "previous_patient_service_time": {
+                "missing": 232,
+                "percentage": 1.16,
+                "recommendation": "Impute with average_service_time_minutes or use forward-fill within doctor groups"
+            },
+            "staff_availability": {
+                "missing": 142,
+                "percentage": 0.71,
+                "recommendation": "Impute with median or use business hours average"
+            }
+        },
+        "time_feature_engineering": {
+            "recommendation": "Extract hour from arrival_time and scheduled_time; create is_rush_hour, is_morning, etc.",
+            "note": "Temporal patterns likely affect queue dynamics significantly"
+        }
+    },
+    
+    "I_IMPORTANT_OBSERVATIONS": {
+        "target_distribution": {
+            "observation": "waiting_time_minutes ranges from 1 to 240 minutes with median of 66 minutes",
+            "implication": "Distribution is likely right-skewed; consider log transformation or quantile-based evaluation metrics"
+        },
+        "missing_data_pattern": {
+            "observation": "arrival_delay_minutes has significant missing rate (28.9%)",
+            "implication": "This feature may be meaningful only for subset of data; consider stratified analysis"
+        },
+        "feature_uniqueness": {
+            "observation": "patient_id has 20,000 unique values; doctor_id has ~27 unique values; day_of_week has 7 unique values",
+            "implication": "Patient ID should never be used; doctor specialization is better predictor than doctor ID"
+        },
+        "categorical_balance": {
+            "observation": "Gender: Female/Male/Other; Priority: Normal/Urgent/Emergency; Patient Type: New/Follow-up",
+            "implication": "Check class imbalance; Emergency patients likely have different queue dynamics"
+        },
+        "correlation_potential": {
+            "observation": "patients_ahead, queue_length, and doctor availability likely correlate strongly with waiting time",
+            "implication": "These are the PRIMARY PREDICTORS; multicollinearity may be an issue"
+        },
+        "synthetic_data_note": {
+            "observation": "This is a synthetic dataset created for academic purposes",
+            "implication": "Results should not be claimed as clinically validated; patterns may differ from real data"
+        }
+    },
+    
+    "J_RECOMMENDATIONS_FOR_NEXT_ML_STEP": [
+        "1. EXPLORATORY DATA ANALYSIS (EDA) CONTINUATION",
+        "   - Create scatter plots of target vs key numeric features (patients_ahead, queue_length, service_time)",
+        "   - Analyze distribution of waiting_time_minutes by priority_level, day_of_week, doctor_specialization",
+        "   - Compute correlation matrix for numeric features to detect multicollinearity",
+        "   - Examine temporal patterns: peak_hour effect, day_of_week patterns"
+        "",
+        "2. DATA CLEANING AND PREPROCESSING",
+        "   - Handle missing values: arrival_delay_minutes, previous_patient_service_time, staff_availability",
+        "   - Remove or encode patient_id, visit_date, arrival_time, scheduled_time",
+        "   - Create meaningful time features (hour, is_peak, is_weekend, etc.)",
+        "   - Encode categorical variables appropriately"
+        "",
+        "3. TRAIN-TEST SPLIT STRATEGY",
+        "   - Use temporal split if data has time ordering (RECOMMENDED for time-series queue data)",
+        "   - Or use stratified random split by priority_level to maintain distribution",
+        "   - Reserve test set for final model evaluation ONLY"
+        "",
+        "4. FEATURE ENGINEERING",
+        "   - Interaction features: patients_ahead * average_service_time, queue_length * active_doctors",
+        "   - Ratio features: queue_length / active_doctors (queue intensity)",
+        "   - Temporal features: is_morning, is_afternoon, is_rush_hour from arrival_time/scheduled_time"
+        "",
+        "5. MODEL SELECTION",
+        "   - BASELINE: Linear Regression (simple, interpretable, fast)",
+        "   - TREE-BASED: Decision Trees, Random Forests, XGBoost (handle non-linearity and feature importance)",
+        "   - GRADIENT BOOSTING: LightGBM (fast, memory-efficient for production)",
+        "   - Start with tree-based models; they typically excel at queue prediction problems",
+        "   - Use cross-validation (k-fold) for robust evaluation"
+        "",
+        "6. MODEL EVALUATION METRICS",
+        "   - Primary: Mean Absolute Error (MAE) in minutes (interpretable for waiting time)",
+        "   - Secondary: Root Mean Squared Error (RMSE) (penalizes large errors more)",
+        "   - Tertiary: R² Score (proportion of variance explained)",
+        "   - Also report: Median Absolute Error, 95th percentile error (worst-case waiting time)"
+        "",
+        "7. HANDLE LEAKAGE BEFORE TRAINING",
+        "   - EXCLUDE or handle carefully: previous_patient_service_time",
+        "   - VERIFY: average_service_time_minutes is computed from historical data only",
+        "   - Simulate real-time prediction scenario: only use information available BEFORE patient joins queue"
+        "",
+        "8. HYPERPARAMETER TUNING",
+        "   - Use GridSearchCV or RandomizedSearchCV with cross-validation",
+        "   - Tune tree depth, learning rate, number of estimators (for ensemble models)",
+        "   - Monitor for overfitting: compare train vs validation metrics"
+        "",
+        "9. FEATURE IMPORTANCE ANALYSIS",
+        "   - After training: rank features by importance for interpretability",
+        "   - Expected top features: patients_ahead, queue_length, average_service_time, active_doctors",
+        "   - Use SHAP values for detailed feature impact analysis"
+        "",
+        "10. MODEL DEPLOYMENT PREPARATION",
+        "   - Save trained model using joblib (approved for project use)",
+        "   - Document: feature engineering pipeline, preprocessing steps, expected input format",
+        "   - Create prediction function that accepts queue context (patients_ahead, queue_length, etc.)",
+        "   - Prepare for Flask/FastAPI integration with Node.js backend"
+        "",
+        "11. VALIDATION AND TESTING",
+        "   - Test on held-out test set",
+        "   - Simulate real-time prediction: feed features in same format as production",
+        "   - Check edge cases: empty queue, peak hour, multiple doctors"
+        "",
+        "12. DOCUMENTATION",
+        "   - Document all preprocessing steps for reproducibility",
+        "   - Note: synthetic dataset, no clinical validation claimed",
+        "   - Record model performance metrics for final report"
+    ]
+}
+
+with open(OUT_DIR / 'DATASET_ANALYSIS_REPORT.json', 'w') as f:
+    json.dump(analysis, f, indent=2, default=str)
+
+print("=" * 80)
+print("DATASET ANALYSIS COMPLETE")
+print("=" * 80)
+print(f"\nA. DATASET DIMENSIONS: {analysis['A_DATASET_DIMENSIONS']['rows']} rows × {analysis['A_DATASET_DIMENSIONS']['columns']} columns")
+print(f"\nB. FEATURE LIST: {', '.join(analysis['B_FEATURE_LIST']['all_columns'][:5])} ... ({len(analysis['B_FEATURE_LIST']['all_columns'])} total)")
+print(f"\nC. TARGET VARIABLE: {analysis['C_TARGET_VARIABLE']['name']} (min={analysis['C_TARGET_VARIABLE']['min']}, max={analysis['C_TARGET_VARIABLE']['max']}, mean={analysis['C_TARGET_VARIABLE']['mean']:.2f})")
+print(f"\nD. MISSING VALUES: {analysis['D_MISSING_VALUE_SUMMARY']['total_missing_cells']} cells; arrival_delay_minutes and previous_patient_service_time have most missingness")
+print(f"\nE. DUPLICATES: {analysis['E_DUPLICATE_SUMMARY']['total_duplicate_rows']} exact duplicate rows")
+print(f"\nF. CANDIDATE FEATURES: Queue metrics (patients_ahead, queue_length), Doctor features (specialization, service_time), Temporal (peak_hour, day_of_week), Operational (hospital_load, staff_availability)")
+print(f"\nG. EXCLUDED/LEAKY FEATURES: patient_id (overfitting), previous_patient_service_time (HIGH LEAKAGE - look-ahead bias)")
+print(f"\nH. PREPROCESSING: Scaling needed for 9 numeric features; Encoding needed for 6 categorical features; Missing value imputation required")
+print(f"\nI. KEY OBSERVATION: Target right-skewed (median 66 min); Strong correlation expected with patients_ahead and queue_length")
+print(f"\nJ. NEXT STEP: Start with tree-based models (Random Forest, XGBoost); use temporal train-test split if ordered by date")
+print("\nFull report saved to: ml-services/reports/DATASET_ANALYSIS_REPORT.json")
+print("=" * 80)

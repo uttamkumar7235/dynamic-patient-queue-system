@@ -1,0 +1,5 @@
+Model,MAE,RMSE,R²,Median AE,P95 AE
+Linear Regression,13.18,17.91,0.8267,10.03,36.27
+Random Forest,8.57,10.85,0.9363,7.1,21.61
+XGBoost,8.06,10.15,0.9443,6.77,20.57
+LightGBM,8.01,10.07,0.9451,6.79,19.95
