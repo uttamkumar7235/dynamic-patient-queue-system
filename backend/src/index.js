@@ -5,6 +5,9 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const healthRouter = require('./routes/health');
+const authRouter = require('./routes/auth');
+const patientRouter = require('./routes/patient');
+const doctorRouter = require('./routes/doctor');
 const { connectDB } = require('./config/db');
 
 const app = express();
@@ -13,6 +16,9 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/api/health', healthRouter);
+app.use('/api/auth', authRouter);
+app.use('/api/patients', patientRouter);
+app.use('/api/doctors', doctorRouter);
 
 app.get('/', (req, res) => res.json({ message: 'Dynamic Patient Queue Backend' }));
 
@@ -31,6 +37,8 @@ async function start() {
   });
 }
 
-start();
+if (require.main === module) {
+  start();
+}
 
 module.exports = app;
